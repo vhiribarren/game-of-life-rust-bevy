@@ -1,0 +1,8 @@
+[target.wasm32-unknown-unknown]
+runner = "wasm-server-runner"
+
+[profile.dev.package."*"]
+opt-level = 3   # Enable max optimizations for dependencies, but not for our code
+
+[alias]
+serve = "run --target wasm32-unknown-unknown"
