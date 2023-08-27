@@ -24,12 +24,51 @@ SOFTWARE.
 use std::collections::BTreeSet;
 
 use bevy::{prelude::*, utils::HashMap};
+use bevy_egui::{egui, EguiContexts, EguiPlugin};
+
+const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.3, 0.6);
 
 fn main() {
     App::new()
+        .insert_resource(ClearColor(BACKGROUND_COLOR))
+        .add_plugins(DefaultPlugins)
+        .add_plugins(EguiPlugin)
+        .add_systems(Startup, init_camera)
         .add_systems(Startup, init_cells)
-        .add_systems(Update, cell_system)
+        .add_systems(Update, system_gui)
+        .add_systems(Update, system_cells)
         .run();
+}
+
+fn init_camera(mut commands: Commands) {
+    commands.spawn(Camera2dBundle::default());
+}
+
+fn system_gui(mut contexts: EguiContexts) {
+    let ctx = contexts.ctx_mut();
+    ctx.set_visuals(egui::style::Visuals::light());
+    egui::Window::new("Game of Life")
+        .resizable(false)
+        .show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.add(
+                    egui::Slider::new(&mut 1., 0.1..=5.)
+                        .text("Speed")
+                        .step_by(0.1)
+                        .logarithmic(true),
+                );
+            });
+            ui.horizontal(|ui| {
+                if ui.button("Play").clicked() {
+                    println!("Play");
+                }
+                if ui.button("Next Step").clicked() {
+                    println!("Next Step");
+                };
+            });
+            ui.add(egui::Separator::default());
+            ui.add(egui::Slider::new(&mut 100, 0..=100).integer().text("Zoom"));
+        });
 }
 
 fn init_cells(mut commands: Commands) {
@@ -50,7 +89,7 @@ static NEIGHBOURS_DELTA: [(isize, isize); 8] = [
     (1, 1),
 ];
 
-fn cell_system(mut commands: Commands, query: Query<(Entity, &Position)>) {
+fn system_cells(mut commands: Commands, query: Query<(Entity, &Position)>) {
     let mut neighbours = HashMap::new();
     let mut spawn_candidates = BTreeSet::new();
     // Compute number of alive neighbour cells
