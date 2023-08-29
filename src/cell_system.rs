@@ -37,7 +37,7 @@ static NEIGHBOURS_DELTA: [(isize, isize); 8] = [
 ];
 
 #[derive(Clone, Component, PartialEq, Eq, Debug, Hash, PartialOrd, Ord)]
-pub struct Position {
+pub struct CellPosition {
     pub x: isize,
     pub y: isize,
 }
@@ -54,20 +54,20 @@ impl Plugin for CellSystem {
 }
 
 fn init_cells(mut commands: Commands) {
-    commands.spawn(Position { x: 0, y: 0 });
-    commands.spawn(Position { x: -1, y: 0 });
-    commands.spawn(Position { x: 0, y: -1 });
-    commands.spawn(Position { x: 0, y: 1 });
-    commands.spawn(Position { x: 1, y: 1 });
+    commands.spawn(CellPosition { x: 0, y: 0 });
+    commands.spawn(CellPosition { x: -1, y: 0 });
+    commands.spawn(CellPosition { x: 0, y: -1 });
+    commands.spawn(CellPosition { x: 0, y: 1 });
+    commands.spawn(CellPosition { x: 1, y: 1 });
 }
 
-fn system_cells(mut commands: Commands, query: Query<(Entity, &Position)>) {
+fn system_cells(mut commands: Commands, query: Query<(Entity, &CellPosition)>) {
     let mut neighbours = HashMap::new();
     let mut spawn_candidates = BTreeSet::new();
     // Compute number of alive neighbour cells
     for (_, cell) in &query {
         for pos_delta in NEIGHBOURS_DELTA.iter() {
-            let scan_pos = Position {
+            let scan_pos = CellPosition {
                 x: cell.x + pos_delta.0,
                 y: cell.y + pos_delta.1,
             };

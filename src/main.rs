@@ -26,7 +26,7 @@ mod cell_system;
 
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
-use cell_system::{CellSystem, Position};
+use cell_system::{CellSystem, CellPosition};
 
 const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.3, 0.6);
 
@@ -75,7 +75,7 @@ fn system_gui(mut contexts: EguiContexts) {
         });
 }
 
-fn system_draw_new_cells(mut commands: Commands, query: Query<(Entity, &Position), Added<Position>>) {
+fn system_draw_new_cells(mut commands: Commands, query: Query<(Entity, &CellPosition), Added<CellPosition>>) {
     for (entity, pos) in query.iter() {
         commands.entity(entity).insert(SpriteBundle {
             sprite: Sprite {
