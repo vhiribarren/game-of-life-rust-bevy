@@ -55,9 +55,10 @@ impl Plugin for CellSystem {
 
 fn init_cells(mut commands: Commands) {
     commands.spawn(Position { x: 0, y: 0 });
-    commands.spawn(Position { x: 1, y: 0 });
     commands.spawn(Position { x: -1, y: 0 });
+    commands.spawn(Position { x: 0, y: -1 });
     commands.spawn(Position { x: 0, y: 1 });
+    commands.spawn(Position { x: 1, y: 1 });
 }
 
 fn system_cells(mut commands: Commands, query: Query<(Entity, &Position)>) {
@@ -87,8 +88,7 @@ fn system_cells(mut commands: Commands, query: Query<(Entity, &Position)>) {
     // Killing starved or overpopulated cells
     for (entity, cell) in &query {
         let neighbours_count = *neighbours
-            .get(cell)
-            .expect("Shoud have been inserted in previous loop");
+            .get(cell).unwrap_or(&0);
         match neighbours_count {
             0..=1 => commands.entity(entity).despawn(),
             2 => (),
