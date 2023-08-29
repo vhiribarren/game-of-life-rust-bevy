@@ -26,7 +26,7 @@ mod cell_system;
 
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
-use cell_system::CellSystem;
+use cell_system::{CellSystem, Position};
 
 const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.3, 0.6);
 
@@ -38,11 +38,14 @@ fn main() {
         .add_plugins(CellSystem)
         .add_systems(Startup, init_camera)
         .add_systems(Update, system_gui)
+        .add_systems(Update, system_draw_new_cells)
         .run();
 }
 
 fn init_camera(mut commands: Commands) {
-    commands.spawn(Camera2dBundle::default());
+    let mut camera = Camera2dBundle::default();
+    camera.projection.scale /= 40.;
+    commands.spawn(camera);
 }
 
 fn system_gui(mut contexts: EguiContexts) {
@@ -70,4 +73,18 @@ fn system_gui(mut contexts: EguiContexts) {
             ui.add(egui::Separator::default());
             ui.add(egui::Slider::new(&mut 100, 0..=100).integer().text("Zoom"));
         });
+}
+
+fn system_draw_new_cells(mut commands: Commands, query: Query<(Entity, &Position), Added<Position>>) {
+    for (entity, pos) in query.iter() {
+        commands.entity(entity).insert(SpriteBundle {
+            sprite: Sprite {
+                color: Color::rgb(0.0, 0.0, 0.5),
+                custom_size: Some(Vec2::new(1.0, 1.0)),
+                ..Default::default()
+            },
+            transform: Transform::from_xyz(pos.x as f32, pos.y as f32, 0.0),
+            ..Default::default()
+        });
+    }
 }

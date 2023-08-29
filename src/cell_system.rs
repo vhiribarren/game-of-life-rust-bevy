@@ -21,9 +21,9 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, time::Duration};
 
-use bevy::{prelude::*, utils::HashMap};
+use bevy::{prelude::*, time::common_conditions::on_timer, utils::HashMap};
 
 static NEIGHBOURS_DELTA: [(isize, isize); 8] = [
     (-1, -1),
@@ -37,17 +37,19 @@ static NEIGHBOURS_DELTA: [(isize, isize); 8] = [
 ];
 
 #[derive(Clone, Component, PartialEq, Eq, Debug, Hash, PartialOrd, Ord)]
-struct Position {
-    x: isize,
-    y: isize,
+pub struct Position {
+    pub x: isize,
+    pub y: isize,
 }
 
 pub struct CellSystem;
 
 impl Plugin for CellSystem {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, init_cells)
-            .add_systems(Update, system_cells);
+        app.add_systems(Startup, init_cells).add_systems(
+            Update,
+            system_cells.run_if(on_timer(Duration::from_secs(1))),
+        );
     }
 }
 
@@ -87,7 +89,6 @@ fn system_cells(mut commands: Commands, query: Query<(Entity, &Position)>) {
         let neighbours_count = *neighbours
             .get(cell)
             .expect("Shoud have been inserted in previous loop");
-        println!("cell {:?} has {:?} neighbours", cell, neighbours.get(cell));
         match neighbours_count {
             0..=1 => commands.entity(entity).despawn(),
             2 => (),
@@ -99,7 +100,6 @@ fn system_cells(mut commands: Commands, query: Query<(Entity, &Position)>) {
     }
     // Spawn new cells
     for new_cell in spawn_candidates {
-        println!("spawn new cell {:?}", new_cell);
         commands.spawn(new_cell);
     }
 }
