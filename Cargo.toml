@@ -7,5 +7,19 @@ description = "Toy project to test the Conway's Game of Life with Rust and Bevy"
 license = "MIT"
 
 [dependencies]
-bevy = "0.11.2"
 bevy_egui = "0.21.0"
+
+[dependencies.bevy]
+version = "0.11.2"
+default-features = false
+features = [
+  # Bevy functionality:
+  "multi-threaded",     # Run with multithreading
+  "bevy_winit",         # Window management
+  "bevy_render",        # Rendering framework core
+  "bevy_core_pipeline", # Common rendering abstractions
+  "bevy_sprite",        # 2D (sprites) rendering
+  # Platform-specific:
+  "x11",                   # Linux: Support X11 windowing system
+  "webgl2",                # Web: use WebGL2 instead of WebGPU
+]
