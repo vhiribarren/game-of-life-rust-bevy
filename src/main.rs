@@ -31,6 +31,8 @@ use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use cell_system::{CellParams, CellPosition, CellSet, CellSystem};
 
 const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.3, 0.6);
+const DEFAULT_SCALE: f32 = 1.0 / 40.0;
+const MAX_SCALE: f32 = 1.0;
 
 fn main() {
     App::new()
@@ -46,15 +48,22 @@ fn main() {
 
 fn init_camera(mut commands: Commands) {
     let mut camera = Camera2dBundle::default();
-    camera.projection.scale /= 40.;
+    camera.projection.scale = DEFAULT_SCALE;
     commands.spawn(camera);
 }
 
-fn system_gui(mut contexts: EguiContexts, mut cell_params: ResMut<CellParams>) {
+fn system_gui(
+    mut contexts: EguiContexts,
+    mut cell_params: ResMut<CellParams>,
+    mut camera: Query<&mut OrthographicProjection>,
+) {
     let ctx = contexts.ctx_mut();
     ctx.set_visuals(egui::style::Visuals::light());
 
     let mut speed_val = cell_params.period.as_secs_f32();
+    let mut camera = camera.get_single_mut().unwrap();
+    let scale_slider_init = scale_to_slider(camera.scale);
+    let mut scale_slider_val = scale_slider_init;
     egui::Window::new("Game of Life")
         .resizable(false)
         .show(ctx, |ui| {
@@ -76,11 +85,18 @@ fn system_gui(mut contexts: EguiContexts, mut cell_params: ResMut<CellParams>) {
                 };
             });
             ui.add(egui::Separator::default());
-            ui.add(egui::Slider::new(&mut 100, 0..=100).integer().text("Zoom"));
+            ui.add(
+                egui::Slider::new(&mut scale_slider_val, 1.0..=100.0)
+                    .text("Scale")
+                    .logarithmic(true),
+            );
         });
     // This test is important to avoid triggering a resource change if not needed
     if cell_params.period.as_secs_f32() != speed_val {
         cell_params.period = Duration::from_secs_f32(speed_val);
+    }
+    if scale_slider_init != scale_slider_val {
+        camera.scale = slider_to_scale(scale_slider_val);
     }
 }
 
@@ -99,4 +115,13 @@ fn system_draw_new_cells(
             ..Default::default()
         });
     }
+}
+
+fn scale_to_slider(scale: f32) -> f32 {
+    (1.0 + 99.0 * (scale - DEFAULT_SCALE) / (MAX_SCALE - DEFAULT_SCALE)).clamp(1.0, 100.0)
+}
+
+fn slider_to_scale(slider: f32) -> f32 {
+    ((slider - 1.0) * (MAX_SCALE - DEFAULT_SCALE) / 99.0 + DEFAULT_SCALE)
+        .clamp(DEFAULT_SCALE, MAX_SCALE)
 }
