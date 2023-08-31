@@ -71,7 +71,9 @@ fn system_gui(mut contexts: EguiContexts, mut cell_params: ResMut<CellParams>) {
                 if ui.button(play_text).clicked() {
                     cell_params.playing = !cell_params.playing;
                 }
-                if ui.button("Next Step").clicked() {};
+                if !cell_params.playing && ui.button("Next Step").clicked() {
+                    cell_params.compute_next_generation = true;
+                };
             });
             ui.add(egui::Separator::default());
             ui.add(egui::Slider::new(&mut 100, 0..=100).integer().text("Zoom"));

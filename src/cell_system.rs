@@ -49,6 +49,7 @@ pub struct CellPosition {
 pub struct CellParams {
     pub playing: bool,
     pub period: Duration,
+    pub compute_next_generation: bool,
 }
 
 impl Default for CellParams {
@@ -56,6 +57,7 @@ impl Default for CellParams {
         Self {
             playing: true,
             period: Duration::from_secs(1),
+            compute_next_generation: false,
         }
     }
 }
@@ -73,12 +75,7 @@ impl Plugin for CellSystem {
             .insert_resource(NextGenTimer(Timer::new(period, TimerMode::Repeating)))
             .add_systems(Update, check_cell_params_changed)
             .add_systems(Startup, init_cells.in_set(CellSet))
-            .add_systems(
-                Update,
-                system_cells
-                    .in_set(CellSet)
-                    .run_if(|params: Res<CellParams>| params.playing),
-            );
+            .add_systems(Update, system_cells.in_set(CellSet));
     }
 }
 
@@ -105,10 +102,17 @@ fn system_cells(
     mut commands: Commands,
     query: Query<(Entity, &CellPosition)>,
     mut timer: ResMut<NextGenTimer>,
+    mut cell_params: ResMut<CellParams>,
     time: Res<Time>,
 ) {
-    timer.0.tick(time.delta());
-    if !timer.0.finished() {
+    if cell_params.playing {
+        timer.0.tick(time.delta());
+        if !timer.0.finished() {
+            return;
+        }
+    } else if cell_params.compute_next_generation {
+        cell_params.compute_next_generation = false;
+    } else {
         return;
     }
     let mut neighbours = HashMap::new();
