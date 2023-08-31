@@ -24,9 +24,11 @@ SOFTWARE.
 
 mod cell_system;
 
+use std::time::Duration;
+
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
-use cell_system::{CellSystem, CellPosition};
+use cell_system::{CellParams, CellPosition, CellSet, CellSystem};
 
 const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.3, 0.6);
 
@@ -38,7 +40,7 @@ fn main() {
         .add_plugins(CellSystem)
         .add_systems(Startup, init_camera)
         .add_systems(Update, system_gui)
-        .add_systems(Update, system_draw_new_cells)
+        .add_systems(Update, system_draw_new_cells.before(CellSet))
         .run();
 }
 
@@ -48,34 +50,42 @@ fn init_camera(mut commands: Commands) {
     commands.spawn(camera);
 }
 
-fn system_gui(mut contexts: EguiContexts) {
+fn system_gui(mut contexts: EguiContexts, mut cell_params: ResMut<CellParams>) {
     let ctx = contexts.ctx_mut();
     ctx.set_visuals(egui::style::Visuals::light());
+
+    let mut speed_val = cell_params.period.as_secs_f32();
     egui::Window::new("Game of Life")
         .resizable(false)
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.add(
-                    egui::Slider::new(&mut 1., 0.1..=5.)
-                        .text("Speed")
-                        .step_by(0.1)
+                    egui::Slider::new(&mut speed_val, 0.01..=5.)
+                        .text("Next generation period")
+                        .suffix("s")
                         .logarithmic(true),
                 );
             });
             ui.horizontal(|ui| {
-                if ui.button("Play").clicked() {
-                    println!("Play");
+                let play_text = if cell_params.playing { "Pause" } else { "Play" };
+                if ui.button(play_text).clicked() {
+                    cell_params.playing = !cell_params.playing;
                 }
-                if ui.button("Next Step").clicked() {
-                    println!("Next Step");
-                };
+                if ui.button("Next Step").clicked() {};
             });
             ui.add(egui::Separator::default());
             ui.add(egui::Slider::new(&mut 100, 0..=100).integer().text("Zoom"));
         });
+    // This test is important to avoid triggering a resource change if not needed
+    if cell_params.period.as_secs_f32() != speed_val {
+        cell_params.period = Duration::from_secs_f32(speed_val);
+    }
 }
 
-fn system_draw_new_cells(mut commands: Commands, query: Query<(Entity, &CellPosition), Added<CellPosition>>) {
+fn system_draw_new_cells(
+    mut commands: Commands,
+    query: Query<(Entity, &CellPosition), Added<CellPosition>>,
+) {
     for (entity, pos) in query.iter() {
         commands.entity(entity).insert(SpriteBundle {
             sprite: Sprite {

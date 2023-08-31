@@ -22,4 +22,5 @@ features = [
   # Platform-specific:
   "x11",                   # Linux: Support X11 windowing system
   "webgl2",                # Web: use WebGL2 instead of WebGPU
+  "trace",
 ]

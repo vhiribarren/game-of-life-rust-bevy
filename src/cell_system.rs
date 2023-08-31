@@ -23,7 +23,7 @@ SOFTWARE.
 */
 use std::{collections::BTreeSet, time::Duration};
 
-use bevy::{prelude::*, time::common_conditions::on_timer, utils::HashMap};
+use bevy::{prelude::*, utils::HashMap};
 
 static NEIGHBOURS_DELTA: [(isize, isize); 8] = [
     (-1, -1),
@@ -36,20 +36,49 @@ static NEIGHBOURS_DELTA: [(isize, isize); 8] = [
     (1, 1),
 ];
 
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct CellSet;
+
 #[derive(Clone, Component, PartialEq, Eq, Debug, Hash, PartialOrd, Ord)]
 pub struct CellPosition {
     pub x: isize,
     pub y: isize,
 }
 
+#[derive(Resource, Debug)]
+pub struct CellParams {
+    pub playing: bool,
+    pub period: Duration,
+}
+
+impl Default for CellParams {
+    fn default() -> Self {
+        Self {
+            playing: true,
+            period: Duration::from_secs(1),
+        }
+    }
+}
+
+#[derive(Resource)]
+pub struct NextGenTimer(Timer);
+
 pub struct CellSystem;
 
 impl Plugin for CellSystem {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, init_cells).add_systems(
-            Update,
-            system_cells.run_if(on_timer(Duration::from_secs(1))),
-        );
+        let cell_params = CellParams::default();
+        let period = cell_params.period;
+        app.insert_resource(cell_params)
+            .insert_resource(NextGenTimer(Timer::new(period, TimerMode::Repeating)))
+            .add_systems(Update, check_cell_params_changed)
+            .add_systems(Startup, init_cells.in_set(CellSet))
+            .add_systems(
+                Update,
+                system_cells
+                    .in_set(CellSet)
+                    .run_if(|params: Res<CellParams>| params.playing),
+            );
     }
 }
 
@@ -61,7 +90,27 @@ fn init_cells(mut commands: Commands) {
     commands.spawn(CellPosition { x: 1, y: 1 });
 }
 
-fn system_cells(mut commands: Commands, query: Query<(Entity, &CellPosition)>) {
+fn check_cell_params_changed(my_res: Res<CellParams>, mut timer: ResMut<NextGenTimer>) {
+    if !my_res.is_changed() {
+        return;
+    }
+    debug!("CellParams changed to: {:?}", *my_res);
+    if my_res.period != timer.0.duration() {
+        timer.0.set_duration(my_res.period);
+        timer.0.reset();
+    }
+}
+
+fn system_cells(
+    mut commands: Commands,
+    query: Query<(Entity, &CellPosition)>,
+    mut timer: ResMut<NextGenTimer>,
+    time: Res<Time>,
+) {
+    timer.0.tick(time.delta());
+    if !timer.0.finished() {
+        return;
+    }
     let mut neighbours = HashMap::new();
     let mut spawn_candidates = BTreeSet::new();
     // Compute number of alive neighbour cells
@@ -87,8 +136,7 @@ fn system_cells(mut commands: Commands, query: Query<(Entity, &CellPosition)>) {
     }
     // Killing starved or overpopulated cells
     for (entity, cell) in &query {
-        let neighbours_count = *neighbours
-            .get(cell).unwrap_or(&0);
+        let neighbours_count = *neighbours.get(cell).unwrap_or(&0);
         match neighbours_count {
             0..=1 => commands.entity(entity).despawn(),
             2 => (),
