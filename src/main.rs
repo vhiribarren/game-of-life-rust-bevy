@@ -26,7 +26,7 @@ mod cell_system;
 
 use std::time::Duration;
 
-use bevy::prelude::*;
+use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use cell_system::{CellParams, CellPosition, CellSet, CellSystem};
 
@@ -42,6 +42,7 @@ fn main() {
         .add_plugins(CellSystem)
         .add_systems(Startup, init_camera)
         .add_systems(Update, system_gui)
+        .add_systems(Update, system_mouse_click)
         .add_systems(Update, system_draw_new_cells.before(CellSet))
         .run();
 }
@@ -124,4 +125,38 @@ fn scale_to_slider(scale: f32) -> f32 {
 fn slider_to_scale(slider: f32) -> f32 {
     ((slider - 1.0) * (MAX_SCALE - DEFAULT_SCALE) / 99.0 + DEFAULT_SCALE)
         .clamp(DEFAULT_SCALE, MAX_SCALE)
+}
+
+fn system_mouse_click(
+    mut commands: Commands,
+    q_windows: Query<&Window, With<PrimaryWindow>>,
+    q_camera: Query<(&Camera, &GlobalTransform)>,
+    q_cellpos: Query<(Entity, &CellPosition)>,
+    buttons: Res<Input<MouseButton>>,
+) {
+    if !buttons.just_pressed(MouseButton::Left) {
+        return;
+    }
+    let Some(cursor_position) = q_windows.single().cursor_position() else {
+        return;
+    };
+    let (camera, camera_transform) = q_camera.single();
+    let Some(target_pos) = camera
+        .viewport_to_world(camera_transform, cursor_position)
+        .map(|ray| ray.origin.truncate().round())
+    else {
+        return;
+    };
+    debug!("Clicked on: {target_pos}");
+    let new_cell = CellPosition {
+        x: target_pos.x as isize,
+        y: target_pos.y as isize,
+    };
+    for (entity, cell_pos) in q_cellpos.iter() {
+        if cell_pos == &new_cell {
+            commands.entity(entity).despawn();
+            return;
+        }
+    }
+    commands.spawn(new_cell);
 }
