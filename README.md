@@ -39,7 +39,7 @@ Setup our environment:
 You can then build the WASM file and generate the JS file:
 
     cargo build --release --target wasm32-unknown-unknown
-    wasm-bindgen --no-typescript  --out-dir ./out/ --target web ./target/wasm32-unknown-unknown/release/game-of-life.wasm
+    wasm-bindgen --no-typescript --out-dir ./webapp/ --target web ./target/wasm32-unknown-unknown/release/game-of-life.wasm
 
 Everything is then in the `/webapp/` folder and ready to be copied on your web server.
 You can even launch a local web server with Python:

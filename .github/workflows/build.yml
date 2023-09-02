@@ -4,10 +4,14 @@ on: push
 
 env:
   CARGO_TERM_COLOR: always
+  WASM_FILE_RELEASE: ./target/wasm32-unknown-unknown/release/game-of-life.wasm
+  WEBAPP_DIR: ./webapp
 
 jobs:
 
-  build:
+  native:
+
+    name: Native build
     runs-on: ubuntu-latest
     steps:
     - name: Checkout project
@@ -21,3 +25,26 @@ jobs:
       run: cargo build
     - name: Run tests
       run: cargo test --verbose
+
+  wasm:
+
+    name: WASM build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout project
+      uses: actions/checkout@v3
+    - name: Instal latest stable Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+    - name: Install WASM LLVM triple
+      run: rustup target add wasm32-unknown-unknown
+    - name: Install wasm-bindgen-cli
+      run: cargo install wasm-bindgen-cli
+    - name: Build
+      run: cargo build --release --target wasm32-unknown-unknown
+    - name: Run tests
+      run: cargo test --verbose --target wasm32-unknown-unknown
+    - name: Generate JS file
+      run: wasm-bindgen --no-typescript --out-dir $WEBAPP_DIR --target web $WASM_FILE_RELEASE
