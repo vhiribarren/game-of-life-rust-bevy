@@ -3,6 +3,10 @@
 
 ## How to run
 
+### Hosted demo
+
+Just go to https://workshop.alea.net/game-of-life-rust-bevy/
+
 ### Native window
 
 To run with a native window:
