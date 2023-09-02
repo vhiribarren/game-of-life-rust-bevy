@@ -30,7 +30,8 @@ use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use cell_system::{CellParams, CellPosition, CellSet, CellSystem};
 
-const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.3, 0.6);
+const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
+const CELL_COLOR: Color = Color::rgb(0.0, 0.0, 0.2);
 const DEFAULT_SCALE: f32 = 1.0 / 40.0;
 const MAX_SCALE: f32 = 1.0;
 
@@ -116,7 +117,7 @@ fn system_draw_new_cells(
     for (entity, pos) in query.iter() {
         commands.entity(entity).insert(SpriteBundle {
             sprite: Sprite {
-                color: Color::rgb(0.0, 0.0, 0.5),
+                color: CELL_COLOR,
                 custom_size: Some(Vec2::new(1.0, 1.0)),
                 ..Default::default()
             },
