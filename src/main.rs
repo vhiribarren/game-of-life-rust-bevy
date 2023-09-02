@@ -43,6 +43,7 @@ fn main() {
         .add_systems(Startup, init_camera)
         .add_systems(Update, system_gui)
         .add_systems(Update, system_mouse_click)
+        .add_systems(Update, system_keyboard_input)
         .add_systems(Update, system_draw_new_cells.before(CellSet))
         .run();
 }
@@ -87,13 +88,17 @@ fn system_gui(
                 if ui.button(play_text).clicked() {
                     cell_params.playing = !cell_params.playing;
                 }
-                let next_step_btn = ui.add_enabled(!cell_params.playing, egui::Button::new("Next Step"));
+                let next_step_btn =
+                    ui.add_enabled(!cell_params.playing, egui::Button::new("Next Step"));
                 if !cell_params.playing && next_step_btn.clicked() {
                     cell_params.compute_next_generation = true;
                 };
             });
             ui.add(egui::Separator::default());
-            ui.label("Click to modify grid when not playing.")
+            ui.vertical(|ui| {
+                ui.label("Click to modify grid when not playing.");
+                ui.label("Keyboard arrows to move around");
+            });
         });
     // This test is important to avoid triggering a resource change if not needed
     if cell_params.period.as_secs_f32() != speed_val {
@@ -138,7 +143,7 @@ fn system_mouse_click(
     q_cellpos: Query<(Entity, &CellPosition)>,
     buttons: Res<Input<MouseButton>>,
 ) {
-    if cell_params.playing || !buttons.just_pressed(MouseButton::Left){
+    if cell_params.playing || !buttons.just_released(MouseButton::Left) {
         return;
     }
     let Some(cursor_position) = q_windows.single().cursor_position() else {
@@ -163,4 +168,25 @@ fn system_mouse_click(
         }
     }
     commands.spawn(new_cell);
+}
+
+fn system_keyboard_input(
+    keys: Res<Input<KeyCode>>,
+    mut q_camera_transform: Query<&mut Transform, With<Camera>>,
+) {
+    let (mut x, mut y) = (0, 0);
+    if keys.pressed(KeyCode::Left) {
+        x += -1;
+    }
+    if keys.pressed(KeyCode::Right) {
+        x += 1;
+    }
+    if keys.pressed(KeyCode::Up) {
+        y += 1;
+    }
+    if keys.pressed(KeyCode::Down) {
+        y += -1;
+    }
+    let mut transform = q_camera_transform.single_mut();
+    transform.translation += Vec3::new(x as f32, y as f32, 0.0);
 }
