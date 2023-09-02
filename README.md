@@ -3,25 +3,48 @@
 
 ## How to run
 
+### Native window
+
 To run with a native window:
 
-    $ cargo run
+    cargo run
+
+### WASM version in web browser
 
 To run the WebAssembly version, as suggested the [Bevy
 Cheatbook](https://bevy-cheatbook.github.io/platforms/wasm.html),
 `wasm-server-runner` can be used:
 
-    $ cp .cargo/config.toml.example .cargo/config.toml
-    $ cargo install wasm-server-runner
+    rustup target install wasm32-unknown-unknown
+    cp .cargo/config.toml.example .cargo/config.toml
+    cargo install wasm-server-runner
 
 Now, a local web server is launched with the compiled WASM file when the
 following command is launched:
 
-    $ cargo run --target wasm32-unknown-unknown
+    cargo run --target wasm32-unknown-unknown
 
 If you've copied the `config.toml`, this alias command can also be used:
 
-    $ cargo serve
+    cargo serve
+
+
+## WASM distribution
+
+Setup our environment:
+
+    rustup target add wasm32-unknown-unknown
+    cargo install wasm-bindgen-cli
+
+You can then build the WASM file and generate the JS file:
+
+    cargo build --release --target wasm32-unknown-unknown
+    wasm-bindgen --no-typescript  --out-dir ./out/ --target web ./target/wasm32-unknown-unknown/release/game-of-life.wasm
+
+Everything is then in the `/webapp/` folder and ready to be copied on your web server.
+You can even launch a local web server with Python:
+
+    python3 -m http.server --directory webapp/
 
 
 ## License

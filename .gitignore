@@ -1,2 +1,5 @@
+.DS_Store
 /target
 /.cargo/config.toml
+/webapp/game-of-life.js
+/webapp/game-of-life_bg.wasm
