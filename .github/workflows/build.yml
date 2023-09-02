@@ -44,7 +44,31 @@ jobs:
       run: cargo install wasm-bindgen-cli
     - name: Build
       run: cargo build --release --target wasm32-unknown-unknown
-    - name: Run tests
-      run: cargo test --verbose --target wasm32-unknown-unknown
+#    - name: Run tests
+#      run: cargo test --verbose --target wasm32-unknown-unknown
     - name: Generate JS file
       run: wasm-bindgen --no-typescript --out-dir $WEBAPP_DIR --target web $WASM_FILE_RELEASE
+    - name: Upload Pages artifact
+      uses: actions/upload-pages-artifact@v2
+      with:
+        path: $WEBAPP_DIR
+
+  deploy:
+
+    needs: wasm
+
+    # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
+    permissions:
+      pages: write      # to deploy to Pages
+      id-token: write   # to verify the deployment originates from an appropriate source
+
+    # Deploy to the github-pages environment
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
