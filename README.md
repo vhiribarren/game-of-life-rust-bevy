@@ -1,5 +1,6 @@
 # Conway's Game of Life
 
+![Game of Life screenshot](material/screenshot_1.png)
 
 ## How to run
 
