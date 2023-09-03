@@ -30,10 +30,15 @@ use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use cell_system::{CellParams, CellPosition, CellSet, CellSystem};
 
+type Seconds = f32;
+
 const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
 const CELL_COLOR: Color = Color::rgb(0.0, 0.0, 0.2);
-const DEFAULT_SCALE: f32 = 1.0 / 40.0;
-const MAX_SCALE: f32 = 1.0;
+const SCALE_DEFAULT: f32 = 1.0 / 40.0;
+const SCALE_MAX: f32 = 1.0;
+
+const PERIOD_MIN: Seconds = 0.01;
+const PERIOD_MAX: Seconds = 1.5;
 
 fn main() {
     App::new()
@@ -51,7 +56,7 @@ fn main() {
 
 fn init_camera(mut commands: Commands) {
     let mut camera = Camera2dBundle::default();
-    camera.projection.scale = DEFAULT_SCALE;
+    camera.projection.scale = SCALE_DEFAULT;
     commands.spawn(camera);
 }
 
@@ -63,8 +68,9 @@ fn system_gui(
     let ctx = contexts.ctx_mut();
     ctx.set_visuals(egui::style::Visuals::light());
 
-    let mut speed_val = cell_params.period.as_secs_f32();
     let mut camera = camera.get_single_mut().unwrap();
+    let speed_slider_init = period_to_slider(cell_params.period.as_secs_f32());
+    let mut speed_slider_val = speed_slider_init;
     let scale_slider_init = scale_to_slider(camera.scale);
     let mut scale_slider_val = scale_slider_init;
     egui::Window::new("Game of Life")
@@ -72,14 +78,14 @@ fn system_gui(
         .show(ctx, |ui| {
             ui.vertical(|ui| {
                 ui.add(
-                    egui::Slider::new(&mut speed_val, 0.01..=5.)
-                        .text("Next generation period")
-                        .suffix("s")
-                        .logarithmic(true),
+                    egui::Slider::new(&mut speed_slider_val, 1.0..=100.0)
+                        .text("Speed")
+                        .show_value(false),
                 );
                 ui.add(
                     egui::Slider::new(&mut scale_slider_val, 1.0..=100.0)
-                        .text("Scale")
+                        .text("Expand view")
+                        .show_value(false)
                         .logarithmic(true),
                 );
             });
@@ -101,12 +107,13 @@ fn system_gui(
                 ui.label("Keyboard arrows to move around");
             });
         });
-    // This test is important to avoid triggering a resource change if not needed
-    if cell_params.period.as_secs_f32() != speed_val {
-        cell_params.period = Duration::from_secs_f32(speed_val);
-    }
+    // Those tests is important to avoid triggering a resource change if not needed
     if scale_slider_init != scale_slider_val {
         camera.scale = slider_to_scale(scale_slider_val);
+    }
+    if speed_slider_init != speed_slider_val {
+        cell_params.period = Duration::from_secs_f32(slider_to_period(speed_slider_val));
+        println!("{:?} {speed_slider_val}", cell_params.period);
     }
 }
 
@@ -127,13 +134,21 @@ fn system_draw_new_cells(
     }
 }
 
+fn period_to_slider(period: f32) -> f32 {
+    (100.0 - 99.0 * (period - PERIOD_MIN) / (PERIOD_MAX - PERIOD_MIN)).clamp(1.0, 100.0)
+}
+
+fn slider_to_period(slider: f32) -> f32 {
+    ((100.0 - slider) * (PERIOD_MAX - PERIOD_MIN) / 99.0 + PERIOD_MIN).clamp(PERIOD_MIN, PERIOD_MAX)
+}
+
 fn scale_to_slider(scale: f32) -> f32 {
-    (1.0 + 99.0 * (scale - DEFAULT_SCALE) / (MAX_SCALE - DEFAULT_SCALE)).clamp(1.0, 100.0)
+    (1.0 + 99.0 * (scale - SCALE_DEFAULT) / (SCALE_MAX - SCALE_DEFAULT)).clamp(1.0, 100.0)
 }
 
 fn slider_to_scale(slider: f32) -> f32 {
-    ((slider - 1.0) * (MAX_SCALE - DEFAULT_SCALE) / 99.0 + DEFAULT_SCALE)
-        .clamp(DEFAULT_SCALE, MAX_SCALE)
+    ((slider - 1.0) * (SCALE_MAX - SCALE_DEFAULT) / 99.0 + SCALE_DEFAULT)
+        .clamp(SCALE_DEFAULT, SCALE_MAX)
 }
 
 fn system_mouse_click(
