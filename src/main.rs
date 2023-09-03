@@ -29,6 +29,7 @@ use std::time::Duration;
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use cell_system::{CellParams, CellPosition, CellSet, CellSystem};
+use egui_modal::Modal;
 
 type Seconds = f32;
 
@@ -61,9 +62,11 @@ fn init_camera(mut commands: Commands) {
 }
 
 fn system_gui(
+    mut commands: Commands,
     mut contexts: EguiContexts,
     mut cell_params: ResMut<CellParams>,
     mut camera: Query<&mut OrthographicProjection>,
+    q_cells: Query<Entity, With<CellPosition>>,
 ) {
     let ctx = contexts.ctx_mut();
     ctx.set_visuals(egui::style::Visuals::light());
@@ -73,9 +76,33 @@ fn system_gui(
     let mut speed_slider_val = speed_slider_init;
     let scale_slider_init = scale_to_slider(camera.scale);
     let mut scale_slider_val = scale_slider_init;
+
+    let reset_modal = Modal::new(ctx, "resel_modal");
+    reset_modal.show(|ui| {
+        reset_modal.title(ui, "Screen reset confirmation");
+        reset_modal.frame(ui, |ui| {
+            reset_modal.body(ui, "Do you confirm clearing the screen?");
+        });
+        reset_modal.buttons(ui, |ui| {
+            reset_modal.button(ui, "Cancel");
+            if reset_modal.button(ui, "Clear Screen").clicked() {
+                cell_params.playing = false;
+                for entity in q_cells.iter() {
+                    commands.entity(entity).despawn();
+                }
+            };
+        });
+    });
+
     egui::Window::new("Game of Life")
         .resizable(false)
         .show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                if ui.button("Clear board").clicked() {
+                    reset_modal.open();
+                }
+            });
+            ui.add(egui::Separator::default());
             ui.vertical(|ui| {
                 ui.add(
                     egui::Slider::new(&mut speed_slider_val, 1.0..=100.0)
@@ -113,7 +140,6 @@ fn system_gui(
     }
     if speed_slider_init != speed_slider_val {
         cell_params.period = Duration::from_secs_f32(slider_to_period(speed_slider_val));
-        println!("{:?} {speed_slider_val}", cell_params.period);
     }
 }
 

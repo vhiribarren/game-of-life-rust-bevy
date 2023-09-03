@@ -1199,6 +1199,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui-modal"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "868331421dda06e5dc8e96b2be78fd01c33a8e5c99ca452369cebecbef7b6639"
+dependencies = [
+ "egui",
+]
+
+[[package]]
 name = "emath"
 version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1392,6 +1401,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_egui",
+ "egui-modal",
 ]
 
 [[package]]

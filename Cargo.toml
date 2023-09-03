@@ -8,6 +8,7 @@ license = "MIT"
 
 [dependencies]
 bevy_egui = "0.21.0"
+egui-modal = "0.2.4"
 
 [dependencies.bevy]
 version = "0.11.2"
