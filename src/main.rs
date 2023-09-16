@@ -30,6 +30,7 @@ use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use cell_system::{CellParams, CellPosition, CellSet, CellSystem};
 use egui_modal::Modal;
+use rand::Rng;
 
 type Seconds = f32;
 
@@ -41,9 +42,23 @@ const SCALE_MAX: f32 = 1.0;
 const PERIOD_MIN: Seconds = 0.01;
 const PERIOD_MAX: Seconds = 1.5;
 
+#[derive(Resource, Debug)]
+pub struct GuiParams {
+    pub random_drag_value: u16,
+}
+
+impl Default for GuiParams {
+    fn default() -> Self {
+        Self {
+            random_drag_value: 50_u16,
+        }
+    }
+}
+
 fn main() {
     App::new()
         .insert_resource(ClearColor(BACKGROUND_COLOR))
+        .insert_resource(GuiParams::default())
         .add_plugins(DefaultPlugins)
         .add_plugins(EguiPlugin)
         .add_plugins(CellSystem)
@@ -65,6 +80,7 @@ fn system_gui(
     mut commands: Commands,
     mut contexts: EguiContexts,
     mut cell_params: ResMut<CellParams>,
+    mut gui_params: ResMut<GuiParams>,
     mut q_camera: Query<(&mut OrthographicProjection, &GlobalTransform)>,
     q_cells: Query<Entity, With<CellPosition>>,
 ) {
@@ -87,9 +103,24 @@ fn system_gui(
             reset_modal.button(ui, "Cancel");
             if reset_modal.button(ui, "Clear Screen").clicked() {
                 cell_params.playing = false;
-                for entity in q_cells.iter() {
-                    commands.entity(entity).despawn();
-                }
+                clear_cells(&mut commands, &q_cells);
+            };
+        });
+    });
+
+    let random_modal = Modal::new(ctx, "random_model");
+    random_modal.show(|ui| {
+        random_modal.title(ui, "Random reset confirmation");
+        random_modal.frame(ui, |ui| {
+            random_modal.body(ui, "Do you confirm filling the screen with random cells?");
+        });
+        random_modal.buttons(ui, |ui| {
+            random_modal.button(ui, "Cancel");
+            if random_modal.button(ui, "Random").clicked() {
+                let offset = -(gui_params.random_drag_value as isize) / 2;
+                let width = gui_params.random_drag_value as usize;
+                clear_cells(&mut commands, &q_cells);
+                random_cells(&mut commands, offset, offset, width, width);
             };
         });
     });
@@ -100,6 +131,12 @@ fn system_gui(
             ui.horizontal(|ui| {
                 if ui.button("Clear board").clicked() {
                     reset_modal.open();
+                }
+            });
+            ui.horizontal(|ui| {
+                ui.add(egui::DragValue::new(&mut gui_params.random_drag_value).suffix(" width"));
+                if ui.button("Random cells").clicked() {
+                    random_modal.open();
                 }
             });
             ui.add(egui::Separator::default());
@@ -235,4 +272,24 @@ fn system_keyboard_input(
     }
     let mut transform = q_camera_transform.single_mut();
     transform.translation += Vec3::new(x as f32, y as f32, 0.0);
+}
+
+fn clear_cells(commands: &mut Commands, q_cells: &Query<Entity, With<CellPosition>>) {
+    for entity in q_cells.iter() {
+        commands.entity(entity).despawn();
+    }
+}
+
+fn random_cells(commands: &mut Commands, x: isize, y: isize, width: usize, height: usize) {
+    let mut rng = rand::thread_rng();
+    for coord_x in x..(x + width as isize) {
+        for coord_y in y..(y + height as isize) {
+            if rng.gen::<bool>() {
+                commands.spawn(CellPosition {
+                    x: coord_x,
+                    y: coord_y,
+                });
+            }
+        }
+    }
 }
