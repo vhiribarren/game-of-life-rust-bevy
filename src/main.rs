@@ -65,16 +65,16 @@ fn system_gui(
     mut commands: Commands,
     mut contexts: EguiContexts,
     mut cell_params: ResMut<CellParams>,
-    mut camera: Query<&mut OrthographicProjection>,
+    mut q_camera: Query<(&mut OrthographicProjection, &GlobalTransform)>,
     q_cells: Query<Entity, With<CellPosition>>,
 ) {
     let ctx = contexts.ctx_mut();
     ctx.set_visuals(egui::style::Visuals::light());
 
-    let mut camera = camera.get_single_mut().unwrap();
+    let (mut camera_proj, camera_transform) = q_camera.get_single_mut().unwrap();
     let speed_slider_init = period_to_slider(cell_params.period.as_secs_f32());
     let mut speed_slider_val = speed_slider_init;
-    let scale_slider_init = scale_to_slider(camera.scale);
+    let scale_slider_init = scale_to_slider(camera_proj.scale);
     let mut scale_slider_val = scale_slider_init;
 
     let reset_modal = Modal::new(ctx, "resel_modal");
@@ -130,13 +130,17 @@ fn system_gui(
             });
             ui.add(egui::Separator::default());
             ui.vertical(|ui| {
+                let x = camera_transform.translation().x;
+                let y = camera_transform.translation().y;
+                ui.label(format!("Current position: x: {x}, y: {y}"));
+                ui.add_space(5.);
                 ui.label("Click to modify grid when not playing.");
                 ui.label("Keyboard arrows to move around");
             });
         });
     // Those tests is important to avoid triggering a resource change if not needed
     if scale_slider_init != scale_slider_val {
-        camera.scale = slider_to_scale(scale_slider_val);
+        camera_proj.scale = slider_to_scale(scale_slider_val);
     }
     if speed_slider_init != speed_slider_val {
         cell_params.period = Duration::from_secs_f32(slider_to_period(speed_slider_val));
