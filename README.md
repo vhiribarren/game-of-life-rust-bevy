@@ -12,7 +12,7 @@ Just go to https://workshop.alea.net/game-of-life-rust-bevy/
 
 To run with a native window:
 
-    cargo run
+    cargo run --release
 
 ### WASM version in web browser
 
@@ -36,7 +36,7 @@ If you've copied the `config.toml`, this alias command can also be used:
 
 ## WASM distribution
 
-Setup our environment:
+Setup your environment:
 
     rustup target add wasm32-unknown-unknown
     cargo install wasm-bindgen-cli
@@ -51,6 +51,16 @@ You can even launch a local web server with Python:
 
     python3 -m http.server --directory webapp/
 
+
+## Development
+
+### Pre-commit hooks
+
+Some git [pre-commit] hooks are available. You can install them using:
+
+    $ pre-commit install
+
+[pre-commit]: https://pre-commit.com/
 
 ## License
 
