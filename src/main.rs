@@ -31,13 +31,23 @@ use gui::GuiSystem;
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "Conways's Game of Life".into(),
-                ..Default::default()
-            }),
-            ..Default::default()
-        }))
+        .add_plugins(
+            DefaultPlugins
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "Conways's Game of Life".into(),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                })
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        fit_canvas_to_parent: true,
+                        ..default()
+                    }),
+                    ..default()
+                }),
+        )
         .add_plugins(CellSystem)
         .add_plugins(GuiSystem)
         .run();
