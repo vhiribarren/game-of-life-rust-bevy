@@ -26,7 +26,10 @@ use std::time::Duration;
 
 use crate::cell_system::{CellParams, CellPosition, CellSet};
 use bevy::{prelude::*, window::PrimaryWindow};
-use bevy_egui::{egui, EguiContexts, EguiPlugin};
+use bevy_egui::{
+    egui::{self, Ui},
+    EguiContexts, EguiPlugin,
+};
 use egui_modal::Modal;
 use rand::Rng;
 
@@ -91,88 +94,107 @@ fn system_gui(
     let scale_slider_init = scale_to_slider(camera_proj.scale);
     let mut scale_slider_val = scale_slider_init;
 
-    let reset_modal = Modal::new(ctx, "resel_modal");
-    reset_modal.show(|ui| {
-        reset_modal.title(ui, "Screen reset confirmation");
-        reset_modal.frame(ui, |ui| {
-            reset_modal.body(ui, "Do you confirm clearing the screen?");
+    let reset_modal = {
+        let modal = Modal::new(ctx, "resel_modal");
+        modal.show(|ui| {
+            modal.title(ui, "Screen reset confirmation");
+            modal.frame(ui, |ui| {
+                modal.body(ui, "Do you confirm clearing the screen?");
+            });
+            modal.buttons(ui, |ui| {
+                modal.button(ui, "Cancel");
+                if modal.button(ui, "Clear Screen").clicked() {
+                    cell_params.playing = false;
+                    clear_cells(&mut commands, &q_cells);
+                };
+            });
         });
-        reset_modal.buttons(ui, |ui| {
-            reset_modal.button(ui, "Cancel");
-            if reset_modal.button(ui, "Clear Screen").clicked() {
-                cell_params.playing = false;
-                clear_cells(&mut commands, &q_cells);
+        modal
+    };
+    let random_modal = {
+        let modal = Modal::new(ctx, "random_model");
+        modal.show(|ui| {
+            modal.title(ui, "Random reset confirmation");
+            modal.frame(ui, |ui| {
+                modal.body(ui, "Do you confirm filling the screen with random cells?");
+            });
+            modal.buttons(ui, |ui| {
+                modal.button(ui, "Cancel");
+                if modal.button(ui, "Random").clicked() {
+                    let offset = -(gui_params.random_drag_value as isize) / 2;
+                    let width = gui_params.random_drag_value as usize;
+                    clear_cells(&mut commands, &q_cells);
+                    random_cells(&mut commands, offset, offset, width, width);
+                };
+            });
+        });
+        modal
+    };
+    let mut panel_reset = |ui: &mut Ui| {
+        ui.horizontal(|ui| {
+            if ui.button("Clear board").clicked() {
+                reset_modal.open();
+            }
+        });
+        ui.horizontal(|ui| {
+            ui.add(egui::DragValue::new(&mut gui_params.random_drag_value).suffix(" width"));
+            if ui.button("Random cells").clicked() {
+                random_modal.open();
+            }
+        });
+    };
+    let mut panel_run = |ui: &mut Ui| {
+        ui.horizontal(|ui| {
+            let play_text = if cell_params.playing { "Pause" } else { "Play" };
+            if ui.button(play_text).clicked() {
+                cell_params.playing = !cell_params.playing;
+            }
+            let next_step_btn =
+                ui.add_enabled(!cell_params.playing, egui::Button::new("Next Step"));
+            if !cell_params.playing && next_step_btn.clicked() {
+                cell_params.compute_next_generation = true;
             };
         });
-    });
-
-    let random_modal = Modal::new(ctx, "random_model");
-    random_modal.show(|ui| {
-        random_modal.title(ui, "Random reset confirmation");
-        random_modal.frame(ui, |ui| {
-            random_modal.body(ui, "Do you confirm filling the screen with random cells?");
+    };
+    let mut panel_view = |ui: &mut Ui| {
+        ui.vertical(|ui| {
+            ui.add(
+                egui::Slider::new(&mut speed_slider_val, 1.0..=100.0)
+                    .text("Speed")
+                    .show_value(false),
+            );
+            ui.add(
+                egui::Slider::new(&mut scale_slider_val, 1.0..=100.0)
+                    .text("Expand view")
+                    .show_value(false)
+                    .logarithmic(true),
+            );
         });
-        random_modal.buttons(ui, |ui| {
-            random_modal.button(ui, "Cancel");
-            if random_modal.button(ui, "Random").clicked() {
-                let offset = -(gui_params.random_drag_value as isize) / 2;
-                let width = gui_params.random_drag_value as usize;
-                clear_cells(&mut commands, &q_cells);
-                random_cells(&mut commands, offset, offset, width, width);
-            };
+    };
+    let panel_info = |ui: &mut Ui| {
+        ui.vertical(|ui| {
+            let x = camera_transform.translation().x;
+            let y = camera_transform.translation().y;
+            ui.label(format!("Current position: x: {x}, y: {y}"));
+            ui.add_space(5.);
+            ui.label("Click to modify grid when not playing.");
+            ui.label("Keyboard arrows to move around");
         });
-    });
+    };
+    let separator = |ui: &mut Ui| ui.add(egui::Separator::default());
 
     egui::Window::new("Game of Life")
         .resizable(false)
         .show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                if ui.button("Clear board").clicked() {
-                    reset_modal.open();
-                }
-            });
-            ui.horizontal(|ui| {
-                ui.add(egui::DragValue::new(&mut gui_params.random_drag_value).suffix(" width"));
-                if ui.button("Random cells").clicked() {
-                    random_modal.open();
-                }
-            });
-            ui.add(egui::Separator::default());
-            ui.vertical(|ui| {
-                ui.add(
-                    egui::Slider::new(&mut speed_slider_val, 1.0..=100.0)
-                        .text("Speed")
-                        .show_value(false),
-                );
-                ui.add(
-                    egui::Slider::new(&mut scale_slider_val, 1.0..=100.0)
-                        .text("Expand view")
-                        .show_value(false)
-                        .logarithmic(true),
-                );
-            });
-            ui.add(egui::Separator::default());
-            ui.horizontal(|ui| {
-                let play_text = if cell_params.playing { "Pause" } else { "Play" };
-                if ui.button(play_text).clicked() {
-                    cell_params.playing = !cell_params.playing;
-                }
-                let next_step_btn =
-                    ui.add_enabled(!cell_params.playing, egui::Button::new("Next Step"));
-                if !cell_params.playing && next_step_btn.clicked() {
-                    cell_params.compute_next_generation = true;
-                };
-            });
-            ui.add(egui::Separator::default());
-            ui.vertical(|ui| {
-                let x = camera_transform.translation().x;
-                let y = camera_transform.translation().y;
-                ui.label(format!("Current position: x: {x}, y: {y}"));
-                ui.add_space(5.);
-                ui.label("Click to modify grid when not playing.");
-                ui.label("Keyboard arrows to move around");
-            });
+            panel_reset(ui);
+            separator(ui);
+            panel_view(ui);
+            separator(ui);
+            panel_run(ui);
+            separator(ui);
+            panel_info(ui);
         });
+
     // Those tests is important to avoid triggering a resource change if not needed
     if scale_slider_init != scale_slider_val {
         camera_proj.scale = slider_to_scale(scale_slider_val);
@@ -197,23 +219,6 @@ fn system_draw_new_cells(
             ..Default::default()
         });
     }
-}
-
-fn period_to_slider(period: f32) -> f32 {
-    (100.0 - 99.0 * (period - PERIOD_MIN) / (PERIOD_MAX - PERIOD_MIN)).clamp(1.0, 100.0)
-}
-
-fn slider_to_period(slider: f32) -> f32 {
-    ((100.0 - slider) * (PERIOD_MAX - PERIOD_MIN) / 99.0 + PERIOD_MIN).clamp(PERIOD_MIN, PERIOD_MAX)
-}
-
-fn scale_to_slider(scale: f32) -> f32 {
-    (1.0 + 99.0 * (scale - SCALE_DEFAULT) / (SCALE_MAX - SCALE_DEFAULT)).clamp(1.0, 100.0)
-}
-
-fn slider_to_scale(slider: f32) -> f32 {
-    ((slider - 1.0) * (SCALE_MAX - SCALE_DEFAULT) / 99.0 + SCALE_DEFAULT)
-        .clamp(SCALE_DEFAULT, SCALE_MAX)
 }
 
 fn system_mouse_click(
@@ -290,4 +295,21 @@ fn random_cells(commands: &mut Commands, x: isize, y: isize, width: usize, heigh
             }
         }
     }
+}
+
+fn period_to_slider(period: f32) -> f32 {
+    (100.0 - 99.0 * (period - PERIOD_MIN) / (PERIOD_MAX - PERIOD_MIN)).clamp(1.0, 100.0)
+}
+
+fn slider_to_period(slider: f32) -> f32 {
+    ((100.0 - slider) * (PERIOD_MAX - PERIOD_MIN) / 99.0 + PERIOD_MIN).clamp(PERIOD_MIN, PERIOD_MAX)
+}
+
+fn scale_to_slider(scale: f32) -> f32 {
+    (1.0 + 99.0 * (scale - SCALE_DEFAULT) / (SCALE_MAX - SCALE_DEFAULT)).clamp(1.0, 100.0)
+}
+
+fn slider_to_scale(slider: f32) -> f32 {
+    ((slider - 1.0) * (SCALE_MAX - SCALE_DEFAULT) / 99.0 + SCALE_DEFAULT)
+        .clamp(SCALE_DEFAULT, SCALE_MAX)
 }
