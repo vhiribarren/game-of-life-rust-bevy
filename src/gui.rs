@@ -55,19 +55,26 @@ impl Plugin for GuiSystem {
             .add_systems(Update, system_mouse_click)
             .add_systems(Update, system_keyboard_input)
             .add_systems(Update, system_draw_new_cells.before(CellSet))
-            .add_systems(Update, system_draw_grid.after(system_draw_new_cells));
+            .add_systems(
+                Update,
+                system_draw_grid
+                    .after(system_draw_new_cells)
+                    .run_if(|gui_params: Res<GuiParams>| gui_params.grid_enabled),
+            );
     }
 }
 
 #[derive(Resource, Debug)]
 pub struct GuiParams {
     pub random_drag_value: u16,
+    pub grid_enabled: bool,
 }
 
 impl Default for GuiParams {
     fn default() -> Self {
         Self {
             random_drag_value: 50_u16,
+            grid_enabled: true,
         }
     }
 }
@@ -131,69 +138,61 @@ fn system_gui(
         });
         modal
     };
-    let mut panel_reset = |ui: &mut Ui| {
-        ui.horizontal(|ui| {
-            if ui.button("Clear board").clicked() {
-                reset_modal.open();
-            }
-        });
-        ui.horizontal(|ui| {
-            ui.add(egui::DragValue::new(&mut gui_params.random_drag_value).suffix(" width"));
-            if ui.button("Random cells").clicked() {
-                random_modal.open();
-            }
-        });
-    };
-    let mut panel_run = |ui: &mut Ui| {
-        ui.horizontal(|ui| {
-            let play_text = if cell_params.playing { "Pause" } else { "Play" };
-            if ui.button(play_text).clicked() {
-                cell_params.playing = !cell_params.playing;
-            }
-            let next_step_btn =
-                ui.add_enabled(!cell_params.playing, egui::Button::new("Next Step"));
-            if !cell_params.playing && next_step_btn.clicked() {
-                cell_params.compute_next_generation = true;
-            };
-        });
-    };
-    let mut panel_view = |ui: &mut Ui| {
-        ui.vertical(|ui| {
-            ui.add(
-                egui::Slider::new(&mut speed_slider_val, 1.0..=100.0)
-                    .text("Speed")
-                    .show_value(false),
-            );
-            ui.add(
-                egui::Slider::new(&mut scale_slider_val, 1.0..=100.0)
-                    .text("Expand view")
-                    .show_value(false)
-                    .logarithmic(true),
-            );
-        });
-    };
-    let panel_info = |ui: &mut Ui| {
-        ui.vertical(|ui| {
-            let x = camera_transform.translation().x;
-            let y = camera_transform.translation().y;
-            ui.label(format!("Current position: x: {x}, y: {y}"));
-            ui.add_space(5.);
-            ui.label("Click to modify grid when not playing.");
-            ui.label("Keyboard arrows to move around");
-        });
-    };
     let separator = |ui: &mut Ui| ui.add(egui::Separator::default());
 
     egui::Window::new("Game of Life")
         .resizable(false)
         .show(ctx, |ui| {
-            panel_reset(ui);
+            ui.horizontal(|ui| {
+                if ui.button("Clear board").clicked() {
+                    reset_modal.open();
+                }
+            });
+            ui.horizontal(|ui| {
+                ui.add(egui::DragValue::new(&mut gui_params.random_drag_value).suffix(" width"));
+                if ui.button("Random cells").clicked() {
+                    random_modal.open();
+                }
+            });
             separator(ui);
-            panel_view(ui);
+            ui.vertical(|ui| {
+                ui.add(
+                    egui::Slider::new(&mut speed_slider_val, 1.0..=100.0)
+                        .text("Speed")
+                        .show_value(false),
+                );
+                ui.add(
+                    egui::Slider::new(&mut scale_slider_val, 1.0..=100.0)
+                        .text("Expand view")
+                        .show_value(false)
+                        .logarithmic(true),
+                );
+            });
             separator(ui);
-            panel_run(ui);
+            ui.horizontal(|ui| {
+                let play_text = if cell_params.playing { "Pause" } else { "Play" };
+                if ui.button(play_text).clicked() {
+                    cell_params.playing = !cell_params.playing;
+                }
+                let next_step_btn =
+                    ui.add_enabled(!cell_params.playing, egui::Button::new("Next Step"));
+                if !cell_params.playing && next_step_btn.clicked() {
+                    cell_params.compute_next_generation = true;
+                };
+            });
             separator(ui);
-            panel_info(ui);
+            ui.vertical(|ui| {
+                ui.checkbox(&mut gui_params.grid_enabled, "Display grid");
+            });
+            separator(ui);
+            ui.vertical(|ui| {
+                let x = camera_transform.translation().x;
+                let y = camera_transform.translation().y;
+                ui.label(format!("Current position: x: {x}, y: {y}"));
+                ui.add_space(5.);
+                ui.label("Click to modify grid when not playing.");
+                ui.label("Keyboard arrows to move around");
+            });
         });
 
     // Those tests is important to avoid triggering a resource change if not needed
