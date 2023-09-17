@@ -27,7 +27,7 @@ use std::time::Duration;
 use crate::cell_system::{CellParams, CellPosition, CellSet};
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{
-    egui::{self, Color32, Sense, Ui},
+    egui::{self, Color32, Ui},
     EguiContexts, EguiPlugin,
 };
 use egui_modal::Modal;
@@ -280,18 +280,15 @@ fn system_keyboard_input(
 
 fn system_draw_grid(
     mut contexts: EguiContexts,
-    q_windows: Query<&Window, With<PrimaryWindow>>,
     q_camera: Query<(&Camera, &OrthographicProjection, &GlobalTransform)>,
 ) {
     const LINE_COLOR: Color32 = Color32::BLACK;
-    let window = q_windows.get_single().unwrap();
     let (camera, camera_proj, camera_transform) = q_camera.get_single().unwrap();
     let ctx = contexts.ctx_mut();
     let transparent_frame = egui::containers::Frame {
         fill: Color32::TRANSPARENT,
         ..Default::default()
     };
-    let step = (1.0 / camera_proj.scale) as usize;
     let line_width =
         (1.0 - (camera_proj.scale - SCALE_DEFAULT) / (SCALE_MAX - SCALE_DEFAULT)).powi(10);
 
