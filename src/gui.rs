@@ -27,7 +27,7 @@ use std::time::Duration;
 use crate::cell_system::{CellParams, CellPosition, CellSet};
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{
-    egui::{self, Ui},
+    egui::{self, Color32, Sense, Ui},
     EguiContexts, EguiPlugin,
 };
 use egui_modal::Modal;
@@ -54,7 +54,8 @@ impl Plugin for GuiSystem {
             .add_systems(Update, system_gui)
             .add_systems(Update, system_mouse_click)
             .add_systems(Update, system_keyboard_input)
-            .add_systems(Update, system_draw_new_cells.before(CellSet));
+            .add_systems(Update, system_draw_new_cells.before(CellSet))
+            .add_systems(Update, system_draw_grid.after(system_draw_new_cells));
     }
 }
 
@@ -275,6 +276,121 @@ fn system_keyboard_input(
     }
     let mut transform = q_camera_transform.single_mut();
     transform.translation += Vec3::new(x as f32, y as f32, 0.0);
+}
+
+fn system_draw_grid(
+    mut contexts: EguiContexts,
+    q_windows: Query<&Window, With<PrimaryWindow>>,
+    q_camera: Query<(&Camera, &OrthographicProjection, &GlobalTransform)>,
+) {
+    const LINE_COLOR: Color32 = Color32::BLACK;
+    let window = q_windows.get_single().unwrap();
+    let (camera, camera_proj, camera_transform) = q_camera.get_single().unwrap();
+    let ctx = contexts.ctx_mut();
+    let transparent_frame = egui::containers::Frame {
+        fill: Color32::TRANSPARENT,
+        ..Default::default()
+    };
+    let step = (1.0 / camera_proj.scale) as usize;
+    let line_width =
+        (1.0 - (camera_proj.scale - SCALE_DEFAULT) / (SCALE_MAX - SCALE_DEFAULT)).powi(10);
+
+    egui::CentralPanel::default()
+        .frame(transparent_frame)
+        .show(ctx, |ui| {
+            let (response, painter) = ui.allocate_painter(
+                bevy_egui::egui::Vec2::new(ui.available_width(), ui.available_height()),
+                egui::Sense {
+                    click: false,
+                    drag: false,
+                    focusable: false,
+                },
+            );
+            let visible_top_left = camera
+                .viewport_to_world(camera_transform, Vec2 { x: 0.0, y: 0.0 })
+                .map(|ray| ray.origin.truncate())
+                .unwrap();
+            let (x_min, y_max) = (
+                visible_top_left.x.round() as isize,
+                visible_top_left.y.round() as isize,
+            );
+            let visible_bottom_right = camera
+                .viewport_to_world(
+                    camera_transform,
+                    Vec2 {
+                        x: response.rect.right(),
+                        y: response.rect.bottom(),
+                    },
+                )
+                .map(|ray| ray.origin.truncate())
+                .unwrap();
+            let (x_max, y_min) = (
+                visible_bottom_right.x.round() as isize,
+                visible_bottom_right.y.round() as isize,
+            );
+            for x in x_min..=x_max {
+                let start = camera
+                    .world_to_viewport(
+                        camera_transform,
+                        Vec3 {
+                            x: x as f32 - 0.5,
+                            y: y_min as f32 - 0.5,
+                            z: 0.0,
+                        },
+                    )
+                    .unwrap();
+                let start = egui::Pos2::new(start.x, start.y);
+                let end = camera
+                    .world_to_viewport(
+                        camera_transform,
+                        Vec3 {
+                            x: x as f32 - 0.5,
+                            y: y_max as f32 + 0.5,
+                            z: 0.0,
+                        },
+                    )
+                    .unwrap();
+                let end = egui::Pos2::new(end.x, end.y);
+                painter.add(egui::Shape::LineSegment {
+                    points: [start, end],
+                    stroke: egui::Stroke {
+                        width: line_width,
+                        color: LINE_COLOR,
+                    },
+                });
+            }
+            for y in y_min..=y_max {
+                let start = camera
+                    .world_to_viewport(
+                        camera_transform,
+                        Vec3 {
+                            x: x_min as f32 - 0.5,
+                            y: y as f32 - 0.5,
+                            z: 0.0,
+                        },
+                    )
+                    .unwrap();
+                let start = egui::Pos2::new(start.x, start.y);
+                let end = camera
+                    .world_to_viewport(
+                        camera_transform,
+                        Vec3 {
+                            x: x_max as f32 + 0.5,
+                            y: y as f32 - 0.5,
+                            z: 0.0,
+                        },
+                    )
+                    .unwrap();
+                let end = egui::Pos2::new(end.x, end.y);
+                painter.add(egui::Shape::LineSegment {
+                    points: [start, end],
+                    stroke: egui::Stroke {
+                        width: line_width,
+                        color: LINE_COLOR,
+                    },
+                });
+            }
+        });
 }
 
 fn clear_cells(commands: &mut Commands, q_cells: &Query<Entity, With<CellPosition>>) {
