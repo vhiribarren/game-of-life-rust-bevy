@@ -6,7 +6,7 @@
 
 ### Hosted demo
 
-Just go to https://workshop.alea.net/game-of-life-rust-bevy/
+Just go to https://www.alea.net/game-of-life-rust-bevy/
 
 ### Native window
 
